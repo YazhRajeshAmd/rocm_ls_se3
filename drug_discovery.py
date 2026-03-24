@@ -16,7 +16,7 @@ os.environ.setdefault('HIP_VISIBLE_DEVICES', '0')
 
 st.set_page_config(page_title="Pretrained SE(3) Transformer", layout="wide")
 
-st.title("🤗 Pretrained SE(3) Transformer for QM9")
+st.title("Pretrained SE(3) Transformer for QM9")
 st.markdown("### Using AMD's Pretrained SE(3) Transformer from Hugging Face")
 
 # Model configurations based on the pretrained checkpoint
@@ -102,6 +102,7 @@ class SE3TransformerWrapper(nn.Module):
     def __init__(self, checkpoint_path):
         super().__init__()
         self.checkpoint_path = checkpoint_path
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
         # Load the checkpoint
         if os.path.exists(checkpoint_path):
@@ -144,6 +145,14 @@ class SE3TransformerWrapper(nn.Module):
             # Try to extract training info
             self.epoch = self.checkpoint.get('epoch', 'Unknown')
             self.loss = self.checkpoint.get('loss', 'Unknown')
+    
+    def to(self, device):
+        """Override to method to ensure all components move to device"""
+        super().to(device)
+        self.device = device
+        if hasattr(self, 'prediction_head'):
+            self.prediction_head = self.prediction_head.to(device)
+        return self
             
     def predict_mock(self, graph, coordinates):
         """
@@ -152,6 +161,9 @@ class SE3TransformerWrapper(nn.Module):
         realistic predictions based on the QM9 data distribution
         """
         try:
+            # Ensure coordinates are on the same device
+            coordinates = coordinates.to(self.device)
+            
             # Use graph structure to create features
             num_atoms = graph.num_nodes()
             num_edges = graph.num_edges()
@@ -163,7 +175,7 @@ class SE3TransformerWrapper(nn.Module):
                 float(num_edges) / max(float(num_atoms), 1.0),  # connectivity
                 torch.mean(coordinates).item(),  # geometric center
                 torch.std(coordinates).item(),   # spatial spread
-            ], dtype=torch.float32).unsqueeze(0)
+            ], dtype=torch.float32, device=self.device).unsqueeze(0)
             
             # Add some learned-like patterns
             if hasattr(self, 'checkpoint') and self.checkpoint:
@@ -172,7 +184,7 @@ class SE3TransformerWrapper(nn.Module):
                 torch.manual_seed(seed_value)
                 
                 # Simulate learned weights effect
-                weighted_features = structure_features * torch.randn(1, 5) * 0.1 + torch.randn(1, 5) * 0.05
+                weighted_features = structure_features * torch.randn(1, 5, device=self.device) * 0.1 + torch.randn(1, 5, device=self.device) * 0.05
                 
                 # Combine features and ensure exactly 64 dimensions
                 combined_features = torch.cat([structure_features, weighted_features], dim=1)  # (1, 10)
@@ -180,7 +192,7 @@ class SE3TransformerWrapper(nn.Module):
                 # Pad to 64 features
                 if combined_features.shape[1] < 64:
                     padding_needed = 64 - combined_features.shape[1]
-                    padding = torch.zeros(1, padding_needed)
+                    padding = torch.zeros(1, padding_needed, device=self.device)
                     padded_features = torch.cat([combined_features, padding], dim=1)
                 else:
                     padded_features = combined_features[:, :64]
@@ -245,24 +257,27 @@ def load_qm9_for_pretrained():
         st.error(f"QM9 loading error: {str(e)}")
         return None, str(e)
 
-def prepare_pretrained_inputs(graph):
+def prepare_pretrained_inputs(graph, device=None):
     """Prepare inputs for pretrained model"""
+    if device is None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
     # Node features
     num_nodes = graph.num_nodes()
     
     if 'attr' in graph.ndata:
-        node_features = graph.ndata['attr'].float()
+        node_features = graph.ndata['attr'].float().to(device)
     else:
         # Create basic atomic features
-        atomic_nums = torch.ones(num_nodes, dtype=torch.long)
-        node_features = torch.eye(10)[atomic_nums.clamp(0, 9)].float()
+        atomic_nums = torch.ones(num_nodes, dtype=torch.long, device=device)
+        node_features = torch.eye(10, device=device)[atomic_nums.clamp(0, 9)].float()
     
     # Coordinates
     if 'pos' in graph.ndata:
-        coordinates = graph.ndata['pos'].float()
+        coordinates = graph.ndata['pos'].float().to(device)
     else:
         # Generate random coordinates for demo
-        coordinates = torch.randn(num_nodes, 3) * 2.0
+        coordinates = torch.randn(num_nodes, 3, device=device) * 2.0
     
     return node_features, coordinates
 
@@ -311,7 +326,7 @@ pretrained_model, device, checkpoint_path = load_pretrained_se3()
 qm9_dataset, qm9_error = load_qm9_for_pretrained()
 
 # Sidebar
-st.sidebar.header("🤗 Pretrained Model Info")
+st.sidebar.header("Pretrained Model Info")
 
 if pretrained_model and checkpoint_path:
     st.sidebar.success("✅ Pretrained Model Loaded")
@@ -356,15 +371,15 @@ else:
     st.sidebar.error("❌ QM9 Failed")
 
 # Download button
-if st.sidebar.button("📥 Download Pretrained Model"):
+if st.sidebar.button("Download Pretrained Model"):
     st.sidebar.info("Run the download script in terminal")
     st.sidebar.code("bash download_pretrained_model.sh")
 
 # Main tabs
-tab1, tab2, tab3 = st.tabs(["🤗 Model Info", "🧪 Predictions", "📊 Analysis"])
+tab1, tab2, tab3 = st.tabs(["Model Info", "Predictions", "Analysis"])
 
 with tab1:
-    st.header("🤗 AMD's Pretrained SE(3) Transformer")
+    st.header("AMD's Pretrained SE(3) Transformer")
     
     col1, col2 = st.columns([2, 1])
     
@@ -398,7 +413,7 @@ with tab1:
                     st.metric("Parameters", f"{params_m:.1f}M")
             
             # Add GPU test button
-            if st.button("🧪 Test GPU Performance"):
+            if st.button("Test GPU Performance"):
                 with st.spinner("Testing GPU..."):
                     gpu_test = test_gpu_functionality()
                     
@@ -417,12 +432,12 @@ with tab1:
             # Show device status even without model
             device, device_info = get_device_info()
             if device.type == 'cuda':
-                st.success(f"🚀 GPU Available: {device_info}")
+                st.success(f"GPU Available: {device_info}")
             else:
                 st.info(f"Device: {device_info}")
     
     # Model architecture details
-    st.subheader("🏗️ Architecture Details")
+    st.subheader("Architecture Details")
     
     architecture_info = pd.DataFrame({
         'Component': ['Layers', 'Hidden Fiber', 'Attention Heads', 'Edge Fiber', 'Degrees', 'Activation'],
@@ -449,7 +464,7 @@ with tab1:
     
     # Download instructions
     if not pretrained_model:
-        st.subheader("📥 Download Instructions")
+        st.subheader("Download Instructions")
         
         st.markdown("""
         **Step 1:** Install Hugging Face CLI
@@ -474,7 +489,7 @@ with tab1:
         """)
 
 with tab2:
-    st.header("🧪 Pretrained SE(3) Predictions")
+    st.header("Pretrained SE(3) Predictions")
     
     if not pretrained_model:
         st.error("❌ Pretrained model not available. Please download it first.")
@@ -489,7 +504,7 @@ with tab2:
         """)
         
         # Load sample data
-        if st.button("🚀 Load QM9 Sample"):
+        if st.button("Load QM9 Sample"):
             with st.spinner("Loading molecules for pretrained model..."):
                 molecules = extract_qm9_for_demo(qm9_dataset, 30)
                 
@@ -556,7 +571,7 @@ with tab2:
                 with st.spinner("Running pretrained SE(3) Transformer..."):
                     try:
                         # Prepare inputs
-                        node_features, coordinates = prepare_pretrained_inputs(selected_mol['graph'])
+                        node_features, coordinates = prepare_pretrained_inputs(selected_mol['graph'], pretrained_model.device)
                         
                         # Make prediction
                         prediction = pretrained_model.predict_mock(selected_mol['graph'], coordinates)
@@ -643,7 +658,7 @@ with tab2:
                         st.error(f"Prediction failed: {e}")
 
 with tab3:
-    st.header("📊 Pretrained Model Analysis")
+    st.header("Pretrained Model Analysis")
     
     if 'pretrained_result' in st.session_state:
         result = st.session_state['pretrained_result']
@@ -666,7 +681,7 @@ with tab3:
             st.metric("Performance", performance)
         
         # Model comparison
-        st.subheader("🏆 Pretrained Model Advantages")
+        st.subheader("Pretrained Model Advantages")
         
         advantages = pd.DataFrame({
             'Aspect': [
@@ -711,7 +726,7 @@ with tab3:
         st.info("Run pretrained model predictions to see analysis")
         
         # Model information
-        st.subheader("📈 Expected Performance")
+        st.subheader("Expected Performance")
         
         st.markdown("""
         **AMD's Pretrained SE(3) Transformer Performance (QM9):**
@@ -736,6 +751,6 @@ Production-Ready Model
 
 # Status
 if pretrained_model and qm9_dataset:
-    st.success("🚀 Pretrained System Ready")
+    st.success("Pretrained System Ready")
 else:
-    st.warning("⚠️ Download pretrained model to unlock full functionality")
+    st.warning("Download pretrained model to unlock full functionality")
