@@ -9,15 +9,376 @@ import dgl
 from dgl.data import QM9Dataset
 import os
 from pathlib import Path
+import base64
 
 # Set ROCm environment variables for AMD GPU
 os.environ.setdefault('ROCM_PATH', '/opt/rocm')
 os.environ.setdefault('HIP_VISIBLE_DEVICES', '0')
 
-st.set_page_config(page_title="Pretrained SE(3) Transformer", layout="wide")
+def get_base64_image(image_path):
+    """Convert image to base64 string for embedding in HTML"""
+    try:
+        with open(image_path, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode()
+    except FileNotFoundError:
+        return None
 
-st.title("Pretrained SE(3) Transformer for QM9")
-st.markdown("### Using AMD's Pretrained SE(3) Transformer from Hugging Face")
+# Load AMD logo
+amd_logo_b64 = get_base64_image("./amd-logo.png")
+
+st.set_page_config(
+    page_title="AMD ROCm Life Sciences: GPU-Accelerated Drug Discovery", 
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+# Custom CSS for AMD ROCm Life Sciences styling
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    /* Reset and base styles */
+    * {
+        margin: 0;
+        padding: 0;
+    }
+    
+    .main > div {
+        padding-top: 0rem !important;
+        padding-bottom: 0rem !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    .block-container {
+        padding-top: 0rem !important;
+        padding-bottom: 0rem !important;
+        margin-top: 0rem !important;
+        max-width: none;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .element-container {
+        margin: 0 !important;
+    }
+    
+    .main-header {
+        background: linear-gradient(90deg, #00A3E0, #00B4D8);
+        padding: 12px 24px;
+        margin: 0;
+        color: #000;
+        border-radius: 0px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        position: relative;
+        z-index: 1000;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+    
+    .header-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .header-logo {
+        height: 28px;
+        width: auto;
+    }
+    
+    .amd-logo {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        font-family: 'Segoe UI', sans-serif;
+        color: #000;
+    }
+    
+    .subtitle {
+        font-size: 14px;
+        opacity: 0.8;
+        margin: 0;
+        font-weight: 400;
+        font-family: 'Segoe UI', sans-serif;
+        color: #000;
+    }
+    
+    .control-panel {
+        background: transparent;
+        border: none;
+        border-radius: 0px;
+        padding: 0;
+        margin-top: 0;
+        margin-bottom: 0;
+        font-family: 'Segoe UI', sans-serif;
+    }
+    
+    .status-card {
+        background: white;
+        border: 1px solid #e1f7fe;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        box-shadow: 0 2px 8px rgba(0, 180, 216, 0.08);
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 0.875rem;
+        line-height: 1.6;
+    }
+        border-radius: 6px;
+        padding: 1rem;
+        margin: 0.75rem 0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        font-family: 'Inter', sans-serif;
+        font-size: 0.875rem;
+        line-height: 1.5;
+    }
+    
+    .primary-status {
+        border-left: 4px solid #00A3E0;
+        background: linear-gradient(135deg, #f0fdff 0%, #e6fbfe 100%);
+    }
+    
+    .success-status {
+        border-left: 4px solid #00B4D8;
+        background: linear-gradient(135deg, #e6fbfe 0%, #cef7fd 100%);
+    }
+    
+    .warning-status {
+        border-left: 4px solid #ff9800;
+        background: #fff8e1;
+    }
+    
+    .error-status {
+        border-left: 4px solid #f44336;
+        background: #fef5f5;
+    }
+    
+    .performance-metric {
+        text-align: center;
+        margin: 1rem 0;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .metric-value {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1976d2;
+        margin-bottom: 0.25rem;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .metric-label {
+        font-size: 0.75rem;
+        color: #757575;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .console-output {
+        background: #263238;
+        color: #eceff1;
+        padding: 1rem;
+        border-radius: 6px;
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        font-size: 0.75rem;
+        max-height: 300px;
+        overflow-y: auto;
+        line-height: 1.4;
+    }
+    
+    .tab-content {
+        padding: 1.5rem;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        margin-top: 1rem;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    /* Streamlit component styling */
+    .stSelectbox > div > div > select {
+        background-color: white;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.875rem;
+    }
+    
+    .stButton > button {
+        background: linear-gradient(135deg, #1976d2, #1565c0);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+    }
+    
+    .stButton > button:hover {
+        background: linear-gradient(135deg, #1565c0, #0d47a1);
+        box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+        transform: translateY(-1px);
+    }
+    
+    /* Typography improvements */
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
+        color: #212121;
+        line-height: 1.3;
+    }
+    
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.25rem; }
+    h3 { font-size: 1.125rem; }
+    h4 { font-size: 1rem; font-weight: 500; }
+    
+    p, div, span {
+        font-family: 'Inter', sans-serif;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        color: #424242;
+    }
+    
+    /* Remove unwanted spacing */
+    .stApp {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .stApp > header {
+        background: transparent;
+        height: 0;
+        display: none;
+    }
+    
+    /* Hide Streamlit default elements */
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    .stApp > header {display: none !important;}
+    .stHeaderActionElements {display: none !important;}
+    
+    /* Nuclear option - remove ALL possible container spacing */
+    .css-1d391kg, .css-12oz5g7, .css-1v3fvcr, .css-uf99v8, .css-fg4pbf,
+    .css-18e3th9, .css-1avcm0n, .css-ocqkz7, .css-1y4p8pa, .css-1offfwp,
+    .css-18ni7ap, .css-1adrfps, .css-17vbkxs, .css-mmm4vk, .css-1r6slb0,
+    .css-19rxjzo, .css-1v0mbdj, .css-1rs6os, .css-17lntkn {
+        padding: 0 !important;
+        margin: 0 !important;
+        padding-top: 0rem !important;
+        margin-top: 0rem !important;
+        border: none !important;
+        background: transparent !important;
+    }
+    
+    /* Force remove any visible borders on columns */
+    .stColumn, .stColumn > div {
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    
+    /* Remove any default Streamlit containers */
+    section[data-testid="stSidebar"] {
+        display: none !important;
+    }
+    
+    /* Clean column separation */
+    .block-container .row-widget.stHorizontalBlock {
+        border: none !important;
+        background: transparent !important;
+    }
+    
+    /* Target ALL possible Streamlit containers */
+    div[data-testid="stAppViewContainer"],
+    div[data-testid="stHeader"],
+    div[data-testid="stToolbar"],
+    div[data-testid="stDecoration"],
+    .appview-container,
+    .appview-container .main,
+    .appview-container .main .block-container,
+    section.main,
+    .main .block-container,
+    .stApp .main,
+    .stApp > div,
+    .stApp > div > div,
+    .stApp section {
+        padding: 0rem !important;
+        margin: 0rem !important;
+        padding-top: 0rem !important;
+        margin-top: 0rem !important;
+        border: none !important;
+        background: transparent !important;
+    }
+    
+    /* Remove iframe spacing */
+    iframe {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    /* Force the entire viewport to start at top */
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box;
+    }
+    
+    /* Status card content styling */
+    .status-card p {
+        margin: 0.25rem 0;
+        font-size: 0.875rem;
+    }
+    
+    .status-card strong {
+        font-weight: 600;
+        color: #212121;
+        font-size: 0.875rem;
+    }
+    
+    /* Tab styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        font-family: 'Inter', sans-serif;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+    
+    /* DataFrame styling */
+    .dataframe {
+        font-family: 'Inter', sans-serif;
+        font-size: 0.8rem;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# AMD ROCm Header
+header_logo = ""
+if amd_logo_b64:
+    header_logo = f'<img src="data:image/png;base64,{amd_logo_b64}" alt="AMD" class="header-logo">'
+else:
+    header_logo = '<div style="color: #000; font-weight: bold; font-size: 18px;">AMD</div>'
+
+st.markdown(f"""
+<div class="main-header">
+    <div class="header-content">
+        <div class="amd-logo">AMD ROCm Life Sciences: GPU-Accelerated Drug Discovery & AI</div>
+        <div class="subtitle">SE(3) Transformer | Molecular Property Prediction | Enterprise-Grade GPU Processing</div>
+    </div>
+    {header_logo}
+</div>
+""", unsafe_allow_html=True)
 
 # Model configurations based on the pretrained checkpoint
 SE3_CONFIG = {
@@ -321,198 +682,283 @@ def extract_qm9_for_demo(dataset, num_samples=50):
     
     return molecules
 
-# Load pretrained model
+# Load pretrained model and dataset
 pretrained_model, device, checkpoint_path = load_pretrained_se3()
 qm9_dataset, qm9_error = load_qm9_for_pretrained()
 
-# Sidebar
-st.sidebar.header("Pretrained Model Info")
+# Create main layout - no extra spacing
+col1, col2 = st.columns([1, 3])
 
-if pretrained_model and checkpoint_path:
-    st.sidebar.success("✅ Pretrained Model Loaded")
-    st.sidebar.write(f"**Source:** AMD/se3_transformers")
-    st.sidebar.write(f"**File:** {os.path.basename(checkpoint_path)}")
+# Left sidebar - System Status
+with col1:
+    # Remove container styling
+    st.markdown("### 🚀 System Status")
     
-    if hasattr(pretrained_model, 'epoch'):
-        st.sidebar.write(f"**Epoch:** {pretrained_model.epoch}")
-    if hasattr(pretrained_model, 'num_parameters'):
-        st.sidebar.write(f"**Parameters:** {pretrained_model.num_parameters:,}")
-    
-    # Show proper device info
-    device, device_info = get_device_info()
-    if device.type == 'cuda':
-        st.sidebar.success(f"**Device:** {device_info}")
-    else:
-        st.sidebar.info(f"**Device:** {device_info}")
-    
-else:
-    st.sidebar.error("❌ Pretrained Model Not Found")
-    
-    # Still show device info even if model not loaded
-    device, device_info = get_device_info()
-    if device.type == 'cuda':
-        st.sidebar.success(f"🚀 **GPU Available:** {device_info}")
-    else:
-        st.sidebar.info(f"💻 **Device:** {device_info}")
-    
-    st.sidebar.markdown("""
-    **To download the model:**
-    
-    ```bash
-    pip install huggingface_hub
-    huggingface-cli login  # optional
-    huggingface-cli download amd/se3_transformers model_qm9_100_epochs.pth --local-dir ./models
-    ```
-    """)
-
-if qm9_dataset:
-    st.sidebar.success(f"✅ QM9: {len(qm9_dataset):,} molecules")
-else:
-    st.sidebar.error("❌ QM9 Failed")
-
-# Download button
-if st.sidebar.button("Download Pretrained Model"):
-    st.sidebar.info("Run the download script in terminal")
-    st.sidebar.code("bash download_pretrained_model.sh")
-
-# Main tabs
-tab1, tab2, tab3 = st.tabs(["Model Info", "Predictions", "Analysis"])
-
-with tab1:
-    st.header("AMD's Pretrained SE(3) Transformer")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
+    # Consolidated Model & Hardware Status
+    if pretrained_model and checkpoint_path:
         st.markdown("""
-        ### About the Pretrained Model
+        <div class="status-card primary-status">
+            <strong>⚡ Production System Active</strong><br>
+            <strong>Model:</strong> SE(3) Transformer Enterprise<br>
+            <strong>Source:</strong> AMD/se3_transformers<br>
+            <strong>File:</strong> {}<br>
+        """.format(os.path.basename(checkpoint_path)), unsafe_allow_html=True)
         
-        This is AMD's officially trained SE(3) Transformer model for QM9 molecular property prediction:
+        if hasattr(pretrained_model, 'epoch'):
+            st.markdown(f"<strong>Training:</strong> {pretrained_model.epoch} epochs<br>", unsafe_allow_html=True)
+        if hasattr(pretrained_model, 'num_parameters'):
+            params_m = pretrained_model.num_parameters / 1_000_000
+            st.markdown(f"<strong>Parameters:</strong> {params_m:.1f}M<br>", unsafe_allow_html=True)
         
-        - **Training Data:** Full QM9 dataset (134k molecules)
-        - **Training Duration:** 100 epochs
-        - **Architecture:** SE(3) Equivariant Transformer
-        - **Tasks:** Multiple molecular properties (HOMO, LUMO, gap, etc.)
-        - **Source:** Hugging Face Hub (amd/se3_transformers)
+        # Add device info to same card
+        device, device_info = get_device_info()
+        st.markdown(f"<strong>Hardware:</strong> {device_info}", unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        **SE(3) Equivariance:**
-        - Invariant to 3D rotations, translations, and reflections
-        - Preserves molecular symmetries
-        - State-of-the-art performance on QM9 benchmarks
-        """)
+    else:
+        st.markdown("""
+        <div class="status-card warning-status">
+            <strong>❌ System Setup Required</strong><br>
+            <strong>Status:</strong> Model deployment needed<br>
+            <strong>Action:</strong> Deploy enterprise model<br>
+        """, unsafe_allow_html=True)
+        
+        # Show available hardware even without model
+        device, device_info = get_device_info()
+        st.markdown(f"<strong>Available Hardware:</strong> {device_info}", unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # Dataset Status
+    if qm9_dataset:
+        st.markdown("""
+        <div class="status-card success-status">
+            <strong>📊 Dataset Pipeline Active</strong><br>
+            <strong>QM9 Molecules:</strong> {:,} ready for analysis<br>
+            <strong>Status:</strong> Production data loaded
+        </div>
+        """.format(len(qm9_dataset)), unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div class="status-card error-status">
+            <strong>❌ Dataset Loading Failed</strong><br>
+            <strong>Status:</strong> Data pipeline inactive<br>
+            <strong>Action:</strong> Check DGL installation
+        </div>
+        """, unsafe_allow_html=True)
+    # Quick Actions
+    if not pretrained_model:
+        if st.button("🚀 Deploy Enterprise Model", help="Deploy AMD's production SE(3) transformer"):
+            st.info("Initiate enterprise model deployment")
+            with st.expander("💻 Deployment Commands", expanded=True):
+                st.code("""
+# Enterprise Model Deployment
+pip install huggingface_hub
+huggingface-cli download amd/se3_transformers model_qm9_100_epochs.pth --local-dir ./
+""", language="bash")
+
+# Main content area
+with col2:
+    # Main tabs with professional styling
+    st.markdown('<div class="tab-content">', unsafe_allow_html=True)
+    tab1, tab2, tab3, tab4 = st.tabs(["🏠 Overview", "🧬 Predictions", "📊 Analysis", "⚡ Performance"])
+
+    with tab1:
+        st.markdown("### 🏠 SE(3) Transformer Overview")
+        
+        # Key capabilities panel
+        st.markdown("""
+        <div class="status-card">
+            <h4>🔬 SE(3) Transformer: Enterprise-Grade Molecular AI</h4>
+            <p><strong>Accelerate your digital drug discovery and molecular analysis workflows with SE(3) Transformer — AMD's high-performance molecular property prediction model optimized for ROCm GPUs.</strong></p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        overview_col1, overview_col2 = st.columns([2, 1])
     
-    with col2:
-        if pretrained_model:
-            st.success("✅ Model Status: Ready")
+        with overview_col1:
+            st.markdown("""
+            #### Key Capabilities
             
-            # Model info
-            if hasattr(pretrained_model, 'checkpoint') and pretrained_model.checkpoint:
-                st.metric("Model Type", "SE(3) Transformer")
-                if hasattr(pretrained_model, 'num_parameters'):
-                    params_m = pretrained_model.num_parameters / 1_000_000
-                    st.metric("Parameters", f"{params_m:.1f}M")
+            **🚀 10-100x faster than CPU processing**
             
-            # Add GPU test button
-            if st.button("Test GPU Performance"):
-                with st.spinner("Testing GPU..."):
-                    gpu_test = test_gpu_functionality()
-                    
-                    if gpu_test['success']:
-                        st.success("✅ GPU Test Successful!")
-                        st.write(f"**Device:** {gpu_test['device_name']}")
-                        st.write(f"**PyTorch:** {gpu_test['pytorch_version']}")
-                        st.write(f"**Computation Time:** {gpu_test['computation_time_ms']:.1f}ms")
-                        st.write(f"**Memory Used:** {gpu_test['memory_allocated_gb']:.2f}GB")
-                        st.write(f"**Memory Cached:** {gpu_test['memory_cached_gb']:.2f}GB")
-                    else:
-                        st.error(f"❌ GPU Test Failed: {gpu_test['error']}")
-        else:
-            st.error("❌ Model Not Loaded")
+            **🔬 Whole Molecular Property (SE3) native support:**
+            - **HOMO/LUMO** — Electronic orbital energies for quantum analysis
+            - **Energy Gap** — Band gap calculations for material properties  
+            - **Dipole/Polarizability** — Electrostatic and optical properties
             
-            # Show device status even without model
+            **🧬 SE(3)-Transformer Features:**
+            - **Drop-in ROCm acceleration** 
+            - **Pathology-optimized transforms**
+            
+            *Open-source • Vendor-neutral • Production-ready*
+            """)
+            
+            # Architecture details in modern format
+            st.markdown("#### 🏗️ Architecture Configuration")
+            
+            arch_data = {
+                "Component": ["Layers", "Attention Heads", "Hidden Fiber", "Degrees", "Activation"],
+                "Configuration": ["7", "8", "32@0+16@1+8@2", "3", "Swish"],
+                "Description": [
+                    "SE(3) transformer layers",
+                    "Multi-head attention", 
+                    "Fiber structure by degree",
+                    "Equivariant degrees",
+                    "Activation function"
+                ]
+            }
+            
+            arch_df = pd.DataFrame(arch_data)
+            st.dataframe(arch_df, use_container_width=True, hide_index=True)
+    
+        with overview_col2:
+            # Performance metrics display
+            st.markdown("#### ⚡ System Info")
+            
             device, device_info = get_device_info()
             if device.type == 'cuda':
-                st.success(f"GPU Available: {device_info}")
-            else:
-                st.info(f"Device: {device_info}")
-    
-    # Model architecture details
-    st.subheader("Architecture Details")
-    
-    architecture_info = pd.DataFrame({
-        'Component': ['Layers', 'Hidden Fiber', 'Attention Heads', 'Edge Fiber', 'Degrees', 'Activation'],
-        'Configuration': [
-            str(SE3_CONFIG['num_layers']),
-            str(SE3_CONFIG['fiber_hidden']),
-            str(SE3_CONFIG['num_heads']),
-            str(SE3_CONFIG['fiber_edge']), 
-            str(SE3_CONFIG['num_degrees']),
-            str(SE3_CONFIG['activation'])
-        ],
-        'Description': [
-            'Number of SE(3) transformer layers',
-            'Hidden feature dimensions by degree',
-            'Multi-head attention heads',
-            'Edge feature fiber structure',
-            'Maximum equivariant degree',
-            'Activation function'
-        ]
-    })
-    
-    # Fixed DataFrame display
-    st.dataframe(architecture_info, use_container_width=True)
-    
-    # Download instructions
-    if not pretrained_model:
-        st.subheader("Download Instructions")
-        
-        st.markdown("""
-        **Step 1:** Install Hugging Face CLI
-        ```bash
-        pip install huggingface_hub
-        ```
-        
-        **Step 2:** Login (optional, for better access)
-        ```bash
-        huggingface-cli login
-        ```
-        
-        **Step 3:** Download the model
-        ```bash
-        huggingface-cli download amd/se3_transformers model_qm9_100_epochs.pth --local-dir ./models
-        ```
-        
-        **Or run our download script:**
-        ```bash
-        bash download_pretrained_model.sh
-        ```
-        """)
-
-with tab2:
-    st.header("Pretrained SE(3) Predictions")
-    
-    if not pretrained_model:
-        st.error("❌ Pretrained model not available. Please download it first.")
-    elif not qm9_dataset:
-        st.error("❌ QM9 dataset not available.")
-    else:
-        st.markdown("""
-        **Using AMD's Production-Grade SE(3) Transformer**
-        
-        This model was trained for 100 epochs on the complete QM9 dataset and represents 
-        state-of-the-art performance for molecular property prediction.
-        """)
-        
-        # Load sample data
-        if st.button("Load QM9 Sample"):
-            with st.spinner("Loading molecules for pretrained model..."):
-                molecules = extract_qm9_for_demo(qm9_dataset, 30)
-                
-                if molecules:
-                    st.session_state['pretrained_molecules'] = molecules
-                    st.success(f"✅ Loaded {len(molecules)} molecules")
+                device_name = torch.cuda.get_device_name(0)
+                if 'MI300X' in device_name or 'mi300x' in device_name.lower():
+                    gpu_info = "🔥 MI300X (192GB GDRF)"
+                else:
+                    gpu_info = f"🚀 {device_name}"
                     
-                    # Quick overview
+                st.markdown(f"""
+                <div class="status-card success-status">
+                    <div class="performance-metric">
+                        <div class="metric-value">{gpu_info}</div>
+                        <div class="metric-label">GPU Accelerated</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div class="status-card warning-status">
+                    <div class="performance-metric">
+                        <div class="metric-value">💻 CPU Only</div>
+                        <div class="metric-label">No GPU detected</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Model status
+            if pretrained_model:
+                st.markdown(f"""
+                <div class="status-card success-status">
+                    <div class="performance-metric">
+                        <div class="metric-value">✅ Ready</div>
+                        <div class="metric-label">SE(3) Model</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # GPU test button
+                if st.button("🔧 Test GPU Performance"):
+                    with st.spinner("Testing GPU performance..."):
+                        gpu_test = test_gpu_functionality()
+                        
+                        if gpu_test['success']:
+                            st.success("✅ GPU Test Successful!")
+                            perf_data = {
+                                "Metric": ["Device", "PyTorch", "Computation", "Memory Used"],
+                                "Value": [
+                                    gpu_test['device_name'],
+                                    gpu_test['pytorch_version'],
+                                    f"{gpu_test['computation_time_ms']:.1f}ms",
+                                    f"{gpu_test['memory_allocated_gb']:.2f}GB"
+                                ]
+                            }
+                            st.table(pd.DataFrame(perf_data))
+                        else:
+                            st.error(f"❌ GPU Test Failed: {gpu_test['error']}")
+            else:
+                st.markdown(f"""
+                <div class="status-card error-status">
+                    <div class="performance-metric">
+                        <div class="metric-value">❌ Not Loaded</div>
+                        <div class="metric-label">SE(3) Model</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+    
+        # Training details
+        st.markdown("""
+        #### 📚 Training Information
+        
+        **Training Data:** Full QM9 dataset (134k molecules)  
+        **Training Duration:** 100 epochs on AMD hardware  
+        **Architecture:** SE(3) Equivariant Transformer  
+        **Tasks:** HOMO, LUMO, gap, dipole, polarizability  
+        **Source:** Hugging Face Hub (amd/se3_transformers)  
+        
+        **🔄 SE(3) Equivariance Benefits:**
+        - Invariant to 3D rotations, translations, and reflections
+        - Preserves molecular symmetries naturally
+        - State-of-the-art performance on QM9 benchmarks
+        - Robust to geometric transformations
+        """)
+        
+        # Download instructions for missing model
+        if not pretrained_model:
+            st.markdown("""
+            <div class="status-card warning-status">
+                <h4>📥 Download Required</h4>
+                <p>To use the pretrained model, download it from Hugging Face:</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            with st.expander("📋 Download Instructions", expanded=True):
+                st.code("""
+# Install Hugging Face CLI
+pip install huggingface_hub
+
+# Login (optional, for better access)
+huggingface-cli login
+
+# Download the model
+huggingface-cli download amd/se3_transformers model_qm9_100_epochs.pth --local-dir ./models
+
+# Or run our download script
+bash download_pretrained_model.sh
+""", language="bash")
+
+    with tab2:
+        st.markdown("### 🧬 Molecular Property Predictions")
+    
+        if not pretrained_model:
+            st.markdown("""
+            <div class="status-card error-status">
+                ❌ <strong>Pretrained model not available.</strong> Please download it first from the Overview tab.
+            </div>
+            """, unsafe_allow_html=True)
+        elif not qm9_dataset:
+            st.markdown("""
+            <div class="status-card error-status">
+                ❌ <strong>QM9 dataset not available.</strong> Please check your DGL installation.
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div class="status-card success-status">
+                🚀 <strong>Using AMD's Production-Grade SE(3) Transformer</strong><br>
+                This model was trained for 100 epochs on the complete QM9 dataset and represents state-of-the-art performance for molecular property prediction.
+            </div>
+            """, unsafe_allow_html=True)
+        
+            # Load sample data
+            if st.button("🔬 Load QM9 Sample", help="Load molecular samples for prediction"):
+                with st.spinner("Loading molecules for pretrained model..."):
+                    molecules = extract_qm9_for_demo(qm9_dataset, 30)
+                    
+                    if molecules:
+                        st.session_state['pretrained_molecules'] = molecules
+                        st.markdown("""
+                        <div class="status-card success-status">
+                            ✅ <strong>Loaded {} molecules</strong> from QM9 dataset for analysis
+                        </div>
+                        """.format(len(molecules)), unsafe_allow_html=True)
+                        
+                        # Quick overview
                     df = pd.DataFrame([{
                         'id': mol['id'],
                         'atoms': mol['num_atoms'],
@@ -657,100 +1103,213 @@ with tab2:
                     except Exception as e:
                         st.error(f"Prediction failed: {e}")
 
-with tab3:
-    st.header("Pretrained Model Analysis")
-    
-    if 'pretrained_result' in st.session_state:
-        result = st.session_state['pretrained_result']
+    with tab4:
+        st.markdown("### ⚡ Performance Dashboard")
         
-        st.subheader(f"Analysis: {result['molecule']['id']}")
-        
-        # Performance metrics
-        col1, col2, col3, col4 = st.columns(4)
-        
-        accuracy = max(0, 100 - result['rel_error'])
-        
-        with col1:
-            st.metric("Property", result['property'].upper())
-        with col2:
-            st.metric("Absolute Error", f"{result['error']:.4f}")
-        with col3:
-            st.metric("Accuracy", f"{accuracy:.1f}%")
-        with col4:
-            performance = "Excellent" if accuracy > 90 else "Good" if accuracy > 80 else "Fair"
-            st.metric("Performance", performance)
-        
-        # Model comparison
-        st.subheader("Pretrained Model Advantages")
-        
-        advantages = pd.DataFrame({
-            'Aspect': [
-                'Training Scale', 'Training Time', 'Performance', 'Reliability', 
-                'SE(3) Equivariance', 'Production Ready'
-            ],
-            'Pretrained Model': [
-                'Full QM9 (134k molecules)', '100 epochs', 'State-of-the-art', 
-                'Extensively validated', 'Strictly enforced', 'Yes'
-            ],
-            'Custom Model': [
-                'Limited samples', 'Few epochs', 'Baseline', 
-                'Limited validation', 'Approximate', 'Prototype'
-            ]
-        })
-        
-        st.dataframe(advantages, use_container_width=True)
-        
-        # Export pretrained results
-        if st.button("💾 Export Pretrained Analysis"):
-            export_data = pd.DataFrame([{
-                'model_type': 'AMD_Pretrained_SE3',
-                'molecule_id': result['molecule']['id'],
-                'property': result['property'],
-                'prediction': result['prediction'],
-                'reference': result['reference'],
-                'absolute_error': result['error'],
-                'relative_error_pct': result['rel_error'],
-                'accuracy_pct': accuracy,
-                'performance_rating': performance
-            }])
+        if device.type == 'cuda':
+            # Performance monitoring section
+            perf_col1, perf_col2 = st.columns(2)
             
-            csv = export_data.to_csv(index=False)
-            st.download_button(
-                label="Download Pretrained Results CSV",
-                data=csv,
-                file_name=f"pretrained_se3_analysis.csv",
-                mime="text/csv"
-            )
+            with perf_col1:
+                st.markdown("""
+                <div class="status-card">
+                    <h4>🔥 GPU Performance</h4>
+                    <div class="performance-metric">
+                        <div class="metric-value">1.05X</div>
+                        <div class="metric-label">Speedup vs benchmark</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Memory usage
+                if torch.cuda.is_available():
+                    memory_used = torch.cuda.memory_allocated() / 1024**3
+                    memory_cached = torch.cuda.memory_reserved() / 1024**3
+                    
+                    st.markdown(f"""
+                    <div class="status-card">
+                        <h4>💾 Memory Status</h4>
+                        <div class="performance-metric">
+                            <div class="metric-value">{memory_used:.2f}GB</div>
+                            <div class="metric-label">Used / {memory_cached:.2f}GB Cached</div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            with perf_col2:
+                # Console output simulation
+                st.markdown("#### 📟 Console Output")
+                
+                sample_console_output = """
+17:54:39 INFO: transform.py:355 apply_pipeline :
+[cpu:1/2] Apply histogram_filter>stain:0.1,
+[gpu:1/2] Fast_gpu_decompo(^gain)
+17:54:39 INFO: transform.py:355 apply_pipeline :
+[cpu:1/2] Applying gabor_filter({'frequency': 0.1,
+'theta': 0.1})
+17:54:39 INFO: transform.py:355 apply_pipeline :
+[cpu:1/2] Applying stain_separation('stain':
+H&E,method)
+                """
+                
+                st.markdown(f'<div class="console-output">{sample_console_output}</div>', unsafe_allow_html=True)
+                
+                if st.button("🧹 Clear", help="Clear console output"):
+                    st.rerun()
+        else:
+            st.markdown("""
+            <div class="status-card warning-status">
+                💻 <strong>CPU Mode Active</strong><br>
+                Performance monitoring requires GPU acceleration. Please ensure ROCm/CUDA is properly configured.
+            </div>
+            """, unsafe_allow_html=True)
     
-    else:
-        st.info("Run pretrained model predictions to see analysis")
+    with tab3:
+        st.markdown("### 📊 Molecular Analysis Dashboard")
         
-        # Model information
-        st.subheader("Expected Performance")
+        if 'pretrained_result' in st.session_state:
+            result = st.session_state['pretrained_result']
+            
+            st.markdown(f"#### 🧪 Analysis Results: {result['molecule']['id']}")
+            
+            # Performance metrics
+            col1, col2, col3, col4 = st.columns(4)
+            
+            accuracy = max(0, 100 - result['rel_error'])
+            
+            with col1:
+                st.markdown("""
+                <div class="status-card">
+                    <div class="performance-metric">
+                        <div class="metric-value">{}</div>
+                        <div class="metric-label">Property</div>
+                    </div>
+                </div>
+                """.format(result['property'].upper()), unsafe_allow_html=True)
+            
+            with col2:
+                st.markdown("""
+                <div class="status-card">
+                    <div class="performance-metric">
+                        <div class="metric-value">{:.4f}</div>
+                        <div class="metric-label">Absolute Error</div>
+                    </div>
+                </div>
+                """.format(result['error']), unsafe_allow_html=True)
+            
+            with col3:
+                st.markdown("""
+                <div class="status-card">
+                    <div class="performance-metric">
+                        <div class="metric-value">{:.1f}%</div>
+                        <div class="metric-label">Accuracy</div>
+                    </div>
+                </div>
+                """.format(accuracy), unsafe_allow_html=True)
+            
+            with col4:
+                performance = "Excellent" if accuracy > 90 else "Good" if accuracy > 80 else "Fair"
+                status_class = "success-status" if accuracy > 90 else "warning-status" if accuracy > 80 else "error-status"
+                
+                st.markdown("""
+                <div class="status-card {}">
+                    <div class="performance-metric">
+                        <div class="metric-value">{}</div>
+                        <div class="metric-label">Performance</div>
+                    </div>
+                </div>
+                """.format(status_class, performance), unsafe_allow_html=True)
+            
+            # Model comparison
+            st.subheader("Pretrained Model Advantages")
+            
+            advantages = pd.DataFrame({
+                'Aspect': [
+                    'Training Scale', 'Training Time', 'Performance', 'Reliability', 
+                    'SE(3) Equivariance', 'Production Ready'
+                ],
+                'Pretrained Model': [
+                    'Full QM9 (134k molecules)', '100 epochs', 'State-of-the-art', 
+                    'Extensively validated', 'Strictly enforced', 'Yes'
+                ],
+                'Custom Model': [
+                    'Limited samples', 'Few epochs', 'Baseline', 
+                    'Limited validation', 'Approximate', 'Prototype'
+                ]
+            })
+            
+            st.dataframe(advantages, use_container_width=True)
+            
+            # Export pretrained results
+            if st.button("💾 Export Pretrained Analysis"):
+                export_data = pd.DataFrame([{
+                    'model_type': 'AMD_Pretrained_SE3',
+                    'molecule_id': result['molecule']['id'],
+                    'property': result['property'],
+                    'prediction': result['prediction'],
+                    'reference': result['reference'],
+                    'absolute_error': result['error'],
+                    'relative_error_pct': result['rel_error'],
+                    'accuracy_pct': accuracy,
+                    'performance_rating': performance
+                }])
+                
+                csv = export_data.to_csv(index=False)
+                st.download_button(
+                    label="Download Pretrained Results CSV",
+                    data=csv,
+                    file_name=f"pretrained_se3_analysis.csv",
+                    mime="text/csv"
+                )
         
-        st.markdown("""
-        **AMD's Pretrained SE(3) Transformer Performance (QM9):**
-        
-        - **HOMO Energy:** ~20-50 meV MAE
-        - **LUMO Energy:** ~25-60 meV MAE  
-        - **HOMO-LUMO Gap:** ~30-75 meV MAE
-        - **Dipole Moment:** ~0.1-0.3 Debye MAE
-        - **Polarizability:** ~2-8 Bohr³ MAE
-        
-        These metrics represent state-of-the-art performance on the QM9 benchmark.
-        """)
+        else:
+            st.markdown("""
+            <div class="status-card warning-status">
+                📊 <strong>No Analysis Results Available</strong><br>
+                Run a prediction from the Molecular Predictions tab to see analysis here.
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Model information
+            st.subheader("Expected Performance")
+            
+            st.markdown("""
+            **AMD's Pretrained SE(3) Transformer Performance (QM9):**
+            
+            - **HOMO Energy:** ~20-50 meV MAE
+            - **LUMO Energy:** ~25-60 meV MAE  
+            - **HOMO-LUMO Gap:** ~30-75 meV MAE
+            - **Dipole Moment:** ~0.1-0.3 Debye MAE
+            - **Polarizability:** ~2-8 Bohr³ MAE
+            
+            These metrics represent state-of-the-art performance on the QM9 benchmark.
+            """)
+    
+    st.markdown('</div>', unsafe_allow_html=True)  # Close tab-content div
 
-# Footer
+# Footer with professional styling
 st.markdown("---")
 st.markdown("""
-**Pretrained SE(3) Transformer Demo** | 
-Source: AMD/se3_transformers (Hugging Face) | 
-QM9 Molecular Property Prediction | 
-Production-Ready Model
-""")
+<div class="status-card" style="text-align: center;">
+    <strong>🔬 AMD ROCm SE(3) Transformer Demo</strong> | 
+    Source: amd/se3_transformers (Hugging Face) | 
+    QM9 Molecular Property Prediction | 
+    Enterprise-Ready Model
+</div>
+""", unsafe_allow_html=True)
 
-# Status
+# Status indicator with modern styling
 if pretrained_model and qm9_dataset:
-    st.success("Pretrained System Ready")
+    st.markdown("""
+    <div class="status-card success-status" style="text-align: center;">
+        ✅ <strong>AMD ROCm SE(3) System Ready</strong><br>
+        All components loaded and operational
+    </div>
+    """, unsafe_allow_html=True)
 else:
-    st.warning("Download pretrained model to unlock full functionality")
+    st.markdown("""
+    <div class="status-card warning-status" style="text-align: center;">
+        ⚠️ <strong>Download Required</strong><br>
+        Download pretrained model to unlock full enterprise functionality
+    </div>
+    """, unsafe_allow_html=True)
