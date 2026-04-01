@@ -119,6 +119,11 @@ ls -la pbpp-2020.zip
 # If missing, you can download from PDBbind database
 # wget http://www.pdbbind.org.cn/download/pdbbind_2020.tar.gz
 # unzip pbpp-2020.zip
+
+# After downloading PDBBind dataset
+python preprocess.py
+
+# This will create processed/*.pt files for training
 ```
 
 ### 4. AMD Logo (For UI)
