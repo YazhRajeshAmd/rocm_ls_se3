@@ -48,11 +48,14 @@ pip install --upgrade pip
 # Install PyTorch with ROCm support (for AMD GPUs)
 pip install torch==2.1.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm5.6
 
-# For NVIDIA GPUs, use CUDA version instead:
-# pip install torch==2.1.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# Install DGL for graph neural networks using Docker
+1. Download your required public DGL Docker image
 
-# Install DGL for graph neural networks
-pip install dgl -f https://data.dgl.ai/wheels/repo.html
+# docker pull rocm/dgl:<TAG>
+
+2. Launch and connect to the Docker container using the image
+
+# docker run -it --cap-add=SYS_PTRACE --security-opt seccomp=unconfined \ --device=/dev/kfd --device=/dev/dri --group-add video \ --ipc=host --shm-size 8G rocm/dgl:<TAG>
 
 # Install core scientific computing packages
 pip install numpy pandas matplotlib plotly
@@ -87,13 +90,9 @@ python -c "import torch; print('CUDA available:', torch.cuda.is_available()); pr
 The model file `model_qm9_100_epochs.pth` should already be present. If not, download it:
 
 ```bash
-# Option 1: Download from Hugging Face (if available)
+# Download from Hugging Face
 pip install huggingface_hub
 huggingface-cli download amd/se3_transformers model_qm9_100_epochs.pth --local-dir ./
-
-# Option 2: Alternative download locations
-# Check with AMD for the official model repository
-# wget https://path.to.model/model_qm9_100_epochs.pth
 
 # Verify the model file exists
 ls -la model_qm9_100_epochs.pth
@@ -111,7 +110,7 @@ ls -la qm9.tar.*
 # If files are missing, DGL will download them automatically on first run
 ```
 
-### 3. PBPP-2020 Dataset (Optional Enhancement)
+### 3. PBPP-2020 Dataset 
 
 ```bash
 # The pbpp-2020.zip file should be present for enhanced molecular analysis
