@@ -1,6 +1,6 @@
 # SE(3) Transformer Drug Discovery Demo
 
-## 🧬 AMD ROCm Life Sciences: GPU-Accelerated Drug Discovery & AI
+## 🧬 AMD ROCm AI for Science: GPU-Accelerated Drug Discovery & AI
 
 This repository contains a comprehensive drug discovery demonstration using SE(3) Transformer for molecular property prediction with AMD ROCm GPU acceleration.
 
@@ -198,6 +198,16 @@ nohup streamlit run ui_drug_discovery.py --server.port 8501 --server.address 0.0
 - GPU memory monitoring
 - Performance benchmarks
 - Console output tracking
+
+## Output
+
+<img width="1827" height="1248" alt="image" src="https://github.com/user-attachments/assets/0aafb198-ba98-41f4-aec4-85c0a511abb0" />
+
+<img width="1904" height="1251" alt="image" src="https://github.com/user-attachments/assets/d981eb64-b771-41da-8ffd-c9f84c1f5e16" />
+
+<img width="1843" height="928" alt="image" src="https://github.com/user-attachments/assets/652faad3-8c5f-4cb1-a821-0cb5bfb5233d" />
+
+<img width="1829" height="790" alt="image" src="https://github.com/user-attachments/assets/cbd65fc8-7ad8-4a8b-a129-e5770a61417e" />
 
 ## 🔧 Troubleshooting
 
