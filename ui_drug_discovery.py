@@ -38,12 +38,12 @@ def get_base64_image(image_path):
 amd_logo_b64 = get_base64_image("./amd-logo.png")
 
 st.set_page_config(
-    page_title="AMD ROCm Life Sciences: GPU-Accelerated Drug Discovery", 
+    page_title="AMD ROCm AI for Science: GPU-Accelerated Drug Discovery", 
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for AMD ROCm Life Sciences styling
+# Custom CSS for AMD ROCm AI for Science styling
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -384,7 +384,7 @@ else:
 st.markdown(f"""
 <div class="main-header">
     <div class="header-content">
-        <div class="amd-logo">AMD ROCm Life Sciences: GPU-Accelerated Drug Discovery & AI</div>
+        <div class="amd-logo">AMD ROCm AI for Science: GPU-Accelerated Drug Discovery & AI</div>
         <div class="subtitle">SE(3) Transformer | Molecular Property Prediction | Enterprise-Grade GPU Processing</div>
     </div>
     {header_logo}
@@ -1511,18 +1511,18 @@ H&E,method)
                 </div>
                 """.format(accuracy), unsafe_allow_html=True)
             
-            with col4:
-                performance = "Excellent" if accuracy > 90 else "Good" if accuracy > 80 else "Fair"
-                status_class = "success-status" if accuracy > 90 else "warning-status" if accuracy > 80 else "error-status"
+            # with col4:
+            #     performance = "Excellent" if accuracy > 90 else "Good" if accuracy > 80 else "Fair"
+            #     status_class = "success-status" if accuracy > 90 else "warning-status" if accuracy > 80 else "error-status"
                 
-                st.markdown("""
-                <div class="status-card {}">
-                    <div class="performance-metric">
-                        <div class="metric-value">{}</div>
-                        <div class="metric-label">Performance</div>
-                    </div>
-                </div>
-                """.format(status_class, performance), unsafe_allow_html=True)
+            #     st.markdown("""
+            #     <div class="status-card {}">
+            #         <div class="performance-metric">
+            #             <div class="metric-value">{}</div>
+            #             <div class="metric-label">Performance</div>
+            #         </div>
+            #     </div>
+            #     """.format(status_class, performance), unsafe_allow_html=True)
             
             # Model comparison
             st.subheader("Pretrained Model Advantages")
