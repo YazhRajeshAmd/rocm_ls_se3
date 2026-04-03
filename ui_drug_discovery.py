@@ -430,7 +430,6 @@ def convert_to_mol(graph):
         if raw_coords is None:
             num_nodes = graph.num_nodes() if hasattr(graph, 'num_nodes') else 10
             raw_coords = torch.randn(num_nodes, 3) * 2.0
-            st.info("Generated placeholder coordinates for visualization")
         
         # Extract atomic numbers - try multiple approaches for QM9
         raw_atomic_numbers = None
