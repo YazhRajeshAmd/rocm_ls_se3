@@ -1171,6 +1171,19 @@ with col2:
         - Robust to geometric transformations
         """)
         
+        # DGL Resources
+        st.markdown("""
+        #### 🔗 DGL Resources & Documentation
+        
+        **Deep Graph Library (DGL) on AMD ROCm:**
+        - **[Blog: DGL In-Depth](https://rocm.blogs.amd.com/artificial-intelligence/dgl-in-depth/README.html)** — Comprehensive guide to DGL on ROCm
+        - **[Install DGL on ROCm](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/3rd-party/dgl-install.html)** — Official installation documentation
+        - **[Docker Image](https://hub.docker.com/r/rocm/dgl/tags)** — Pre-configured ROCm DGL containers  
+        - **[GitHub Repository](https://github.com/ROCm/dgl)** — ROCm-optimized DGL source code
+        
+        *DGL enables high-performance graph neural networks on AMD GPUs for molecular AI workloads.*
+        """)
+        
         # Download instructions for missing model
         if not pretrained_model:
             st.markdown("""
